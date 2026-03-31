@@ -93,7 +93,6 @@ CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES = 10
 # 爬取间隔（秒）
 CRAWLER_MAX_SLEEP_SEC = 2
 
-<<<<<<< HEAD
 # 起始页码（非涓流模式下使用，涓流模式从第 0 页开始）
 START_PAGE = 1
 
@@ -120,14 +119,6 @@ TRICKLE_DAILY_TIME_RANGE_END = "05:00"
 TRICKLE_ERROR_RETRY_INTERVAL = 120
 
 # ==================== 各平台子配置导入 ====================
-=======
-# 是否禁用 SSL 证书验证。仅在使用企业代理、Burp Suite、mitmproxy 等会注入自签名证书的中间人代理时设为 True。
-# 警告：禁用 SSL 验证将使所有流量暴露于中间人攻击风险，请勿在生产环境中开启。
-DISABLE_SSL_VERIFY = False
-
-from .bilibili_config import *
-from .xhs_config import *
->>>>>>> e8b18683a014a143a6bc8a59f4282e2e6c6128e9
 from .dy_config import *
 from .xhs_config import *
 from .bilibili_config import *
