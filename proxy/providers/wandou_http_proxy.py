@@ -10,6 +10,7 @@ import httpx
 from proxy import IpCache, IpGetError, ProxyProvider
 from proxy.types import IpInfoModel
 from tools import utils
+from tools.httpx_util import make_async_client
 
 
 class WanDouHttpProxy(ProxyProvider):
@@ -45,7 +46,7 @@ class WanDouHttpProxy(ProxyProvider):
         need_get_count = num - len(ip_cache_list)
         self.params.update({"num": min(need_get_count, 100)})  # Maximum 100
         ip_infos = []
-        async with httpx.AsyncClient() as client:
+        async with make_async_client() as client:
             url = self.api_path + "?" + urlencode(self.params)
             utils.logger.info(f"[WanDouHttpProxy.get_proxy] get ip proxy url:{url}")
             response = await client.get(

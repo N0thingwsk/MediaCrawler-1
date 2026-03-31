@@ -6,6 +6,7 @@ from typing import Dict, List
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_fixed
+from tools.httpx_util import make_async_client
 
 import config
 from proxy.providers import (
@@ -61,7 +62,7 @@ class ProxyIpPool:
             else:
                 proxy_url = f"http://{proxy.ip}:{proxy.port}"
 
-            async with httpx.AsyncClient(proxy=proxy_url) as client:
+            async with make_async_client(proxy=proxy_url) as client:
                 response = await client.get(self.valid_ip_url)
             if response.status_code == 200:
                 return True
