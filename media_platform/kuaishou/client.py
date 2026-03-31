@@ -1,24 +1,4 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/kuaishou/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-
-# -*- coding: utf-8 -*-
 import asyncio
 import json
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
@@ -184,22 +164,6 @@ class KuaiShouClient(AbstractApiClient, ProxyRefreshMixin):
         }
         return await self.request_rest_v2("/rest/v/photo/comment/list", post_data)
 
-    async def get_video_sub_comments(
-        self, photo_id: str, root_comment_id: int, pcursor: str = ""
-    ) -> Dict:
-        """Get video second-level comments using REST API V2
-        :param photo_id: video id you want to fetch
-        :param root_comment_id: parent comment id (must be int type)
-        :param pcursor: pagination cursor, defaults to ""
-        :return: dict with subCommentsV2, pcursorV2
-        """
-        post_data = {
-            "photoId": photo_id,
-            "pcursor": pcursor,
-            "rootCommentId": root_comment_id,  # Must be int type for V2 API
-        }
-        return await self.request_rest_v2("/rest/v/photo/comment/sublist", post_data)
-
     async def get_creator_profile(self, userId: str) -> Dict:
         post_data = {
             "operationName": "visionProfile",
@@ -246,61 +210,6 @@ class KuaiShouClient(AbstractApiClient, ProxyRefreshMixin):
                 await callback(photo_id, comments)
             result.extend(comments)
             await asyncio.sleep(crawl_interval)
-            sub_comments = await self.get_comments_all_sub_comments(
-                comments, photo_id, crawl_interval, callback
-            )
-            result.extend(sub_comments)
-        return result
-
-    async def get_comments_all_sub_comments(
-        self,
-        comments: List[Dict],
-        photo_id,
-        crawl_interval: float = 1.0,
-        callback: Optional[Callable] = None,
-    ) -> List[Dict]:
-        """
-        Get all second-level comments under specified first-level comments (V2 REST API)
-        Args:
-            comments: Comment list
-            photo_id: Video ID
-            crawl_interval: Delay unit for crawling comments once (seconds)
-            callback: Callback after one comment crawl ends
-        Returns:
-            List of sub comments
-        """
-        if not config.ENABLE_GET_SUB_COMMENTS:
-            utils.logger.info(
-                f"[KuaiShouClient.get_comments_all_sub_comments] Crawling sub_comment mode is not enabled"
-            )
-            return []
-
-        result = []
-        for comment in comments:
-            # V2 API uses hasSubComments (boolean) instead of subCommentsPcursor (string)
-            has_sub_comments = comment.get("hasSubComments", False)
-            if not has_sub_comments:
-                continue
-
-            # V2 API uses comment_id (int) instead of commentId (string)
-            root_comment_id = comment.get("comment_id")
-            if not root_comment_id:
-                continue
-
-            sub_comment_pcursor = ""
-
-            while sub_comment_pcursor != "no_more":
-                comments_res = await self.get_video_sub_comments(
-                    photo_id, root_comment_id, sub_comment_pcursor
-                )
-                # V2 API returns data at top level
-                sub_comment_pcursor = comments_res.get("pcursorV2", "no_more")
-                sub_comments = comments_res.get("subCommentsV2", [])
-
-                if callback and sub_comments:
-                    await callback(photo_id, sub_comments)
-                await asyncio.sleep(crawl_interval)
-                result.extend(sub_comments)
         return result
 
     async def get_creator_info(self, user_id: str) -> Dict:

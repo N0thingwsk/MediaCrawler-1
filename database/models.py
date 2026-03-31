@@ -1,21 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/database/models.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
 from sqlalchemy import create_engine, Column, Integer, Text, String, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -46,6 +28,7 @@ class BilibiliVideo(Base):
     video_comment = Column(Text, comment='评论数')
     video_cover_url = Column(Text, comment='视频封面URL')
     source_keyword = Column(Text, default='', comment='来源关键词')
+    keyword_tag = Column(Text, default='', comment='关键词标签')
 
 class BilibiliVideoComment(Base):
     __tablename__ = 'bilibili_video_comment'
@@ -61,7 +44,6 @@ class BilibiliVideoComment(Base):
     video_id = Column(BigInteger, index=True, comment='视频ID')
     content = Column(Text, comment='评论内容')
     create_time = Column(BigInteger, comment='创建时间戳')
-    sub_comment_count = Column(Text, comment='子评论数')
     parent_comment_id = Column(String(255), comment='父评论ID')
     like_count = Column(Text, default='0', comment='点赞数')
 
@@ -137,6 +119,7 @@ class DouyinAweme(Base):
     music_download_url = Column(Text, comment='音乐下载URL')
     note_download_url = Column(Text, comment='笔记下载URL')
     source_keyword = Column(Text, default='', comment='来源关键词')
+    keyword_tag = Column(Text, default='', comment='关键词标签')
 
 class DouyinAwemeComment(Base):
     __tablename__ = 'douyin_aweme_comment'
@@ -155,10 +138,11 @@ class DouyinAwemeComment(Base):
     aweme_id = Column(BigInteger, index=True, comment='作品ID')
     content = Column(Text, comment='评论内容')
     create_time = Column(BigInteger, comment='创建时间戳')
-    sub_comment_count = Column(Text, comment='子评论数')
     parent_comment_id = Column(String(255), comment='父评论ID')
     like_count = Column(Text, default='0', comment='点赞数')
+    sub_comment_count = Column(Text, default='0', comment='子评论数')
     pictures = Column(Text, default='', comment='图片')
+    keyword_tag = Column(Text, default='', comment='关键词标签')
 
 class DyCreator(Base):
     __tablename__ = 'dy_creator'
@@ -195,6 +179,7 @@ class KuaishouVideo(Base):
     video_cover_url = Column(Text, comment='视频封面URL')
     video_play_url = Column(Text, comment='视频播放URL')
     source_keyword = Column(Text, default='', comment='来源关键词')
+    keyword_tag = Column(Text, default='', comment='关键词标签')
 
 class KuaishouVideoComment(Base):
     __tablename__ = 'kuaishou_video_comment'
@@ -208,7 +193,6 @@ class KuaishouVideoComment(Base):
     video_id = Column(String(255), index=True, comment='视频ID')
     content = Column(Text, comment='评论内容')
     create_time = Column(BigInteger, comment='创建时间戳')
-    sub_comment_count = Column(Text, comment='子评论数')
 
 class WeiboNote(Base):
     __tablename__ = 'weibo_note'
@@ -230,6 +214,7 @@ class WeiboNote(Base):
     shared_count = Column(Text, comment='分享数')
     note_url = Column(Text, comment='笔记URL')
     source_keyword = Column(Text, default='', comment='来源关键词')
+    keyword_tag = Column(Text, default='', comment='关键词标签')
 
 class WeiboNoteComment(Base):
     __tablename__ = 'weibo_note_comment'
@@ -248,7 +233,6 @@ class WeiboNoteComment(Base):
     create_time = Column(BigInteger, comment='创建时间戳')
     create_date_time = Column(String(255), index=True, comment='创建日期时间')
     comment_like_count = Column(Text, comment='评论点赞数')
-    sub_comment_count = Column(Text, comment='子评论数')
     parent_comment_id = Column(String(255), comment='父评论ID')
 
 class WeiboCreator(Base):
@@ -306,6 +290,7 @@ class XhsNote(Base):
     tag_list = Column(Text, comment='标签列表')
     note_url = Column(Text, comment='笔记URL')
     source_keyword = Column(Text, default='', comment='来源关键词')
+    keyword_tag = Column(Text, default='', comment='关键词标签')
     xsec_token = Column(Text, comment='Xsec Token')
 
 class XhsNoteComment(Base):
@@ -321,7 +306,6 @@ class XhsNoteComment(Base):
     create_time = Column(BigInteger, index=True, comment='创建时间戳')
     note_id = Column(String(255), comment='笔记ID')
     content = Column(Text, comment='评论内容')
-    sub_comment_count = Column(Integer, comment='子评论数')
     pictures = Column(Text, comment='图片')
     parent_comment_id = Column(String(255), comment='父评论ID')
     like_count = Column(Text, comment='点赞数')
@@ -361,7 +345,6 @@ class TiebaComment(Base):
     tieba_link = Column(Text, comment='贴吧链接')
     publish_time = Column(String(255), index=True, comment='发布时间')
     ip_location = Column(Text, default='', comment='IP地址位置')
-    sub_comment_count = Column(Integer, default=0, comment='子评论数')
     note_id = Column(String(255), index=True, comment='笔记ID')
     note_url = Column(Text, comment='笔记URL')
     add_ts = Column(BigInteger, comment='添加时间戳')
@@ -418,7 +401,6 @@ class ZhihuComment(Base):
     content = Column(Text, comment='评论内容')
     publish_time = Column(String(32), index=True, comment='发布时间')
     ip_location = Column(Text, comment='IP地址位置')
-    sub_comment_count = Column(Integer, default=0, comment='子评论数')
     like_count = Column(Integer, default=0, comment='点赞数')
     dislike_count = Column(Integer, default=0, comment='点踩数')
     content_id = Column(String(64), index=True, comment='内容ID')

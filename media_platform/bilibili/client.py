@@ -1,24 +1,4 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/bilibili/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-# -*- coding: utf-8 -*-
-# @Author  : relakkes@gmail.com
 # @Time    : 2023/12/2 18:44
 # @Desc    : bilibili request client
 import asyncio
@@ -256,17 +236,15 @@ class BilibiliClient(AbstractApiClient, ProxyRefreshMixin):
         self,
         video_id: str,
         crawl_interval: float = 1.0,
-        is_fetch_sub_comments=False,
         callback: Optional[Callable] = None,
         max_count: int = 10,
     ):
         """
-        get video all comments include sub comments
+        get video all comments
         :param video_id:
         :param crawl_interval:
-        :param is_fetch_sub_comments:
         :param callback:
-        max_count: Maximum number of comments to crawl per note
+        :param max_count: Maximum number of comments to crawl per note
 
         :return:
         """
@@ -310,78 +288,12 @@ class BilibiliClient(AbstractApiClient, ProxyRefreshMixin):
             if not isinstance(is_end, bool):
                 utils.logger.warning(f"[BilibiliClient.get_video_all_comments] 'is_end' is not a boolean for video_id: {video_id}. Assuming end of comments.")
                 is_end = True
-            if is_fetch_sub_comments:
-                for comment in comment_list:
-                    comment_id = comment['rpid']
-                    if (comment.get("rcount", 0) > 0):
-                        {await self.get_video_all_level_two_comments(video_id, comment_id, CommentOrderType.DEFAULT, 10, crawl_interval, callback)}
             if len(result) + len(comment_list) > max_count:
                 comment_list = comment_list[:max_count - len(result)]
             if callback:  # If there is a callback function, execute it
                 await callback(video_id, comment_list)
             await asyncio.sleep(crawl_interval)
-            if not is_fetch_sub_comments:
-                result.extend(comment_list)
-                continue
-        return result
-
-    async def get_video_all_level_two_comments(
-        self,
-        video_id: str,
-        level_one_comment_id: int,
-        order_mode: CommentOrderType,
-        ps: int = 10,
-        crawl_interval: float = 1.0,
-        callback: Optional[Callable] = None,
-    ) -> Dict:
-        """
-        get video all level two comments for a level one comment
-        :param video_id: Video ID
-        :param level_one_comment_id: Level one comment ID
-        :param order_mode:
-        :param ps: Number of comments per page
-        :param crawl_interval:
-        :param callback:
-        :return:
-        """
-
-        pn = 1
-        while True:
-            result = await self.get_video_level_two_comments(video_id, level_one_comment_id, pn, ps, order_mode)
-            comment_list: List[Dict] = result.get("replies", [])
-            if callback:  # If there is a callback function, execute it
-                await callback(video_id, comment_list)
-            await asyncio.sleep(crawl_interval)
-            if (int(result["page"]["count"]) <= pn * ps):
-                break
-
-            pn += 1
-
-    async def get_video_level_two_comments(
-        self,
-        video_id: str,
-        level_one_comment_id: int,
-        pn: int,
-        ps: int,
-        order_mode: CommentOrderType,
-    ) -> Dict:
-        """get video level two comments
-        :param video_id: Video ID
-        :param level_one_comment_id: Level one comment ID
-        :param order_mode: Sort order
-
-        :return:
-        """
-        uri = "/x/v2/reply/reply"
-        post_data = {
-            "oid": video_id,
-            "mode": order_mode.value,
-            "type": 1,
-            "ps": ps,
-            "pn": pn,
-            "root": level_one_comment_id,
-        }
-        result = await self.get(uri, post_data)
+            result.extend(comment_list)
         return result
 
     async def get_creator_videos(self, creator_id: str, pn: int, ps: int = 30, order_mode: SearchOrderType = SearchOrderType.LAST_PUBLISH) -> Dict:

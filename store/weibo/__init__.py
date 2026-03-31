@@ -1,24 +1,4 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/store/weibo/__init__.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-# -*- coding: utf-8 -*-
-# @Author  : relakkes@gmail.com
 # @Time    : 2024/1/14 21:34
 # @Desc    :
 
@@ -33,21 +13,14 @@ from ._store_impl import *
 
 class WeibostoreFactory:
     STORES = {
-        "csv": WeiboCsvStoreImplement,
         "db": WeiboDbStoreImplement,
-        "postgres": WeiboDbStoreImplement,
-        "json": WeiboJsonStoreImplement,
-        "jsonl": WeiboJsonlStoreImplement,
-        "sqlite": WeiboSqliteStoreImplement,
-        "mongodb": WeiboMongoStoreImplement,
-        "excel": WeiboExcelStoreImplement,
     }
 
     @staticmethod
     def create_store() -> AbstractStore:
         store_class = WeibostoreFactory.STORES.get(config.SAVE_DATA_OPTION)
         if not store_class:
-            raise ValueError("[WeibotoreFactory.create_store] Invalid save option only supported csv or db or json or sqlite or mongodb or excel ...")
+            raise ValueError("[WeibostoreFactory.create_store] Invalid save option, only 'db' (MySQL) is supported.")
         return store_class()
 
 
@@ -103,6 +76,7 @@ async def update_weibo_note(note_item: Dict):
         "profile_url": user_info.get("profile_url", ""),
         "avatar": user_info.get("profile_image_url", ""),
         "source_keyword": source_keyword_var.get(),
+        "keyword_tag": source_keyword_var.get(),
     }
     utils.logger.info(f"[store.weibo.update_weibo_note] weibo note id:{note_id}, title:{save_content_item.get('content')[:24]} ...")
     await WeibostoreFactory.create_store().store_content(content_item=save_content_item)
@@ -146,7 +120,6 @@ async def update_weibo_note_comment(note_id: str, comment_item: Dict):
         "create_date_time": str(utils.rfc2822_to_china_datetime(comment_item.get("created_at"))),
         "note_id": note_id,
         "content": clean_text,
-        "sub_comment_count": str(comment_item.get("total_number", 0)),
         "comment_like_count": str(comment_item.get("like_count", 0)),
         "last_modify_ts": utils.get_current_timestamp(),
         "ip_location": comment_item.get("source", "").replace("来自", ""),

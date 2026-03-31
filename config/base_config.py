@@ -1,128 +1,127 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/config/base_config.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
+# 涓流爬取服务配置文件
 
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
+# ==================== 基础配置 ====================
+# 平台列表：支持同时配置多个平台，依次爬取
+# 可选值：xhs | dy | ks | bili | wb | tieba | zhihu
+PLATFORM = ["dy"]
 
-# Basic configuration
-PLATFORM = "xhs"  # Platform, xhs | dy | ks | bili | wb | tieba | zhihu
-KEYWORDS = "编程副业,编程兼职"  # Keyword search configuration, separated by English commas
-LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
+# 爬取关键词列表
+KEYWORDS = [
+    "ai短剧",
+    "ai漫剧"
+]
+
+# 登录方式：qrcode（二维码） 或 phone（手机号） 或 cookie
+LOGIN_TYPE = "cookie"
+
+# Cookie 值（cookie 登录方式使用）
 COOKIES = ""
-CRAWLER_TYPE = (
-    "search"  # Crawling type, search (keyword search) | detail (post details) | creator (creator homepage data)
-)
-# Whether to enable IP proxy
-ENABLE_IP_PROXY = False
 
-# Number of proxy IP pools
-IP_PROXY_POOL_COUNT = 2
+# 爬取类型，服务模式下固定为 trickle（抖音走 trickle_search，其他平台走 search）
+CRAWLER_TYPE = "trickle"
 
-# Proxy IP provider name
-IP_PROXY_PROVIDER_NAME = "kuaidaili"  # kuaidaili | wandouhttp
-
-# Setting to True will not open the browser (headless browser)
-# Setting False will open a browser
-# If Xiaohongshu keeps scanning the code to log in but fails, open the browser and manually pass the sliding verification code.
-# If Douyin keeps prompting failure, open the browser and see if mobile phone number verification appears after scanning the QR code to log in. If it does, manually go through it and try again.
+# ==================== 浏览器配置 ====================
+# 是否启用无头浏览器模式（不打开浏览器窗口）
 HEADLESS = False
 
-# Whether to save login status
+# 是否保存登录状态
 SAVE_LOGIN_STATE = True
 
-# ==================== CDP (Chrome DevTools Protocol) Configuration ====================
-# Whether to enable CDP mode - use the user's existing Chrome/Edge browser to crawl, providing better anti-detection capabilities
-# Once enabled, the user's Chrome/Edge browser will be automatically detected and started, and controlled through the CDP protocol.
-# This method uses the real browser environment, including the user's extensions, cookies and settings, greatly reducing the risk of detection.
+# 是否启用 CDP 模式 - 使用用户现有的 Chrome/Edge 浏览器进行爬取
 ENABLE_CDP_MODE = True
 
-# CDP debug port, used to communicate with the browser
-# If the port is occupied, the system will automatically try the next available port
+# CDP 调试端口
 CDP_DEBUG_PORT = 9222
 
-# Custom browser path (optional)
-# If it is empty, the system will automatically detect the installation path of Chrome/Edge
-# Windows example: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-# macOS example: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# 自定义浏览器路径（可选，为空自动检测）
 CUSTOM_BROWSER_PATH = ""
 
-# Whether to enable headless mode in CDP mode
-# NOTE: Even if set to True, some anti-detection features may not work well in headless mode
+# CDP 模式下是否启用无头模式
 CDP_HEADLESS = False
 
-# Browser startup timeout (seconds)
+# 浏览器启动超时时间（秒）
 BROWSER_LAUNCH_TIMEOUT = 60
 
-# Whether to automatically close the browser when the program ends
-# Set to False to keep the browser running for easy debugging
+# 程序结束时是否自动关闭浏览器
 AUTO_CLOSE_BROWSER = True
 
-# Data saving type option configuration, supports: csv, db, json, jsonl, sqlite, excel, postgres. It is best to save to DB, with deduplication function.
-SAVE_DATA_OPTION = "jsonl"  # csv or db or json or jsonl or sqlite or excel or postgres
+# 用户浏览器缓存目录
+USER_DATA_DIR = "%s_user_data_dir"
 
-# Data saving path, if not specified by default, it will be saved to the data folder.
-SAVE_DATA_PATH = ""
+# ==================== IP 代理配置 ====================
+# 是否启用 IP 代理
+ENABLE_IP_PROXY = False
 
-# Browser file configuration cached by the user's browser
-USER_DATA_DIR = "%s_user_data_dir"  # %s will be replaced by platform name
+# 代理 IP 池数量
+IP_PROXY_POOL_COUNT = 2
 
-# The number of pages to start crawling starts from the first page by default
-START_PAGE = 1
+# 代理 IP 提供商名称
+IP_PROXY_PROVIDER_NAME = "kuaidaili"
 
-# Control the number of crawled videos/posts
-CRAWLER_MAX_NOTES_COUNT = 15
+# ==================== 多账号配置 ====================
+# 是否启用多账号轮换模式
+ENABLE_MULTI_ACCOUNT = False
 
-# Controlling the number of concurrent crawlers
+# 多账号 Cookie 列表（启用多账号模式时使用）
+# 每个元素为一个完整的 Cookie 字符串
+COOKIES_LIST: list = []
+
+# ==================== 数据库初始化配置 ====================
+# 启动时是否自动初始化数据库表结构
+# 设为 True 则每次启动自动执行建表，适合首次部署
+# 设为 False 则跳过建表，适合日常运行
+INIT_DB_ON_STARTUP = True
+
+# ==================== 数据存储配置 ====================
+# 数据保存类型：仅支持 db（MySQL）
+SAVE_DATA_OPTION = "db"
+
+# ==================== 爬取行为配置 ====================
+# 控制并发爬取的数量
 MAX_CONCURRENCY_NUM = 1
 
-# Whether to enable crawling media mode (including image or video resources), crawling media is not enabled by default
+# 是否启用媒体爬取（图片/视频资源），默认不启用
 ENABLE_GET_MEIDAS = False
 
-# Whether to enable comment crawling mode. Comment crawling is enabled by default.
-ENABLE_GET_COMMENTS = True
+# 是否启用评论爬取
+ENABLE_GET_COMMENTS = False
 
-# Control the number of crawled first-level comments (single video/post)
+# 每个视频/帖子爬取的一级评论数量
 CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES = 10
 
-# Whether to enable the mode of crawling second-level comments. By default, crawling of second-level comments is not enabled.
-# If the old version of the project uses db, you need to refer to schema/tables.sql line 287 to add table fields.
-ENABLE_GET_SUB_COMMENTS = False
-
-# word cloud related
-# Whether to enable generating comment word clouds
-ENABLE_GET_WORDCLOUD = False
-# Custom words and their groups
-# Add rule: xx:yy where xx is a custom-added phrase, and yy is the group name to which the phrase xx is assigned.
-CUSTOM_WORDS = {
-    "零几": "年份",  # Recognize "zero points" as a whole
-    "高频词": "专业术语",  # Example custom words
-}
-
-# Deactivate (disabled) word file path
-STOP_WORDS_FILE = "./docs/hit_stopwords.txt"
-
-# Chinese font file path
-FONT_PATH = "./docs/STZHONGS.TTF"
-
-# Crawl interval
+# 爬取间隔（秒）
 CRAWLER_MAX_SLEEP_SEC = 2
 
-from .bilibili_config import *
-from .xhs_config import *
+# 起始页码（非涓流模式下使用，涓流模式从第 0 页开始）
+START_PAGE = 1
+
+# 最大爬取数量（非涓流模式下使用）
+CRAWLER_MAX_NOTES_COUNT = 100
+
+# ==================== 涓流服务配置 (Trickle Service) ====================
+# 每个关键词每日爬取的最大条数
+TRICKLE_MAX_NOTES_PER_KEYWORD = 100
+
+# 每页爬取后的休眠时间（秒），控制爬取速率，避免触发风控
+# 实际休眠时间 = 基础值 * (0.5~1.5) 的随机系数，模拟人类行为
+TRICKLE_SLEEP_BETWEEN_PAGES = 20
+
+# 关键词之间的休眠时间（秒），实际会加上 0~30 秒的随机偏移
+TRICKLE_SLEEP_BETWEEN_KEYWORDS = 90
+
+# 每日执行的随机时间范围（24小时制）
+# 每天会在此范围内随机选一个时间执行，模拟人类行为，降低风控风险
+TRICKLE_DAILY_TIME_RANGE_START = "01:00"
+TRICKLE_DAILY_TIME_RANGE_END = "05:00"
+
+# 遇到错误后的重试等待时间（秒）
+TRICKLE_ERROR_RETRY_INTERVAL = 120
+
+# ==================== 各平台子配置导入 ====================
 from .dy_config import *
+from .xhs_config import *
+from .bilibili_config import *
 from .ks_config import *
 from .weibo_config import *
 from .tieba_config import *

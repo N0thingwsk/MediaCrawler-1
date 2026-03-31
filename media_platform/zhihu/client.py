@@ -1,23 +1,4 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/zhihu/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-# -*- coding: utf-8 -*-
 import asyncio
 import json
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
@@ -254,32 +235,6 @@ class ZhiHuClient(AbstractApiClient, ProxyRefreshMixin):
         # }
         # return await self.get(uri, params)
 
-    async def get_child_comments(
-        self,
-        root_comment_id: str,
-        offset: str = "",
-        limit: int = 10,
-        order_by: str = "sort",
-    ) -> Dict:
-        """
-        Get child comments under a root comment
-        Args:
-            root_comment_id:
-            offset:
-            limit:
-            order_by:
-
-        Returns:
-
-        """
-        uri = f"/api/v4/comment_v5/comment/{root_comment_id}/child_comment"
-        params = {
-            "order": order_by,
-            "offset": offset,
-            "limit": limit,
-        }
-        return await self.get(uri, params)
-
     async def get_note_all_comments(
         self,
         content: ZhihuContent,
@@ -321,62 +276,8 @@ class ZhiHuClient(AbstractApiClient, ProxyRefreshMixin):
                 await callback(comments)
 
             result.extend(comments)
-            await self.get_comments_all_sub_comments(content, comments, crawl_interval=crawl_interval, callback=callback)
             await asyncio.sleep(crawl_interval)
         return result
-
-    async def get_comments_all_sub_comments(
-        self,
-        content: ZhihuContent,
-        comments: List[ZhihuComment],
-        crawl_interval: float = 1.0,
-        callback: Optional[Callable] = None,
-    ) -> List[ZhihuComment]:
-        """
-        Get all sub-comments under specified comments
-        Args:
-            content: Content detail object (question|article|video)
-            comments: Comment list
-            crawl_interval: Crawl delay interval in seconds
-            callback: Callback after completing one crawl
-
-        Returns:
-
-        """
-        if not config.ENABLE_GET_SUB_COMMENTS:
-            return []
-
-        all_sub_comments: List[ZhihuComment] = []
-        for parment_comment in comments:
-            if parment_comment.sub_comment_count == 0:
-                continue
-
-            is_end: bool = False
-            offset: str = ""
-            prev_offset: str = ""
-            limit: int = 10
-            while not is_end:
-                prev_offset = offset
-                child_comment_res = await self.get_child_comments(parment_comment.comment_id, offset, limit)
-                if not child_comment_res:
-                    break
-                paging_info = child_comment_res.get("paging", {})
-                is_end = paging_info.get("is_end")
-                offset = self._extractor.extract_offset(paging_info)
-                sub_comments = self._extractor.extract_comments(content, child_comment_res.get("data"))
-
-                if not sub_comments:
-                    break
-
-                if prev_offset == offset:
-                    break
-
-                if callback:
-                    await callback(sub_comments)
-
-                all_sub_comments.extend(sub_comments)
-                await asyncio.sleep(crawl_interval)
-        return all_sub_comments
 
     async def get_creator_info(self, url_token: str) -> Optional[ZhihuCreator]:
         """

@@ -1,24 +1,4 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/tieba/help.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-
-# -*- coding: utf-8 -*-
 import html
 import json
 import re
@@ -178,40 +158,7 @@ class TieBaExtractor:
             result.append(tieba_comment)
         return result
 
-    def extract_tieba_note_sub_comments(self, page_content: str, parent_comment: TiebaComment) -> List[TiebaComment]:
-        """
-        Extract Tieba post second-level comments from sub-comment page
-        Args:
-            page_content: HTML string of page content
-            parent_comment: Parent comment object
 
-        Returns:
-            List of second-level comment objects
-        """
-        selector = Selector(page_content)
-        comments = []
-        comment_ele_list = selector.xpath("//li[@class='lzl_single_post j_lzl_s_p first_no_border']")
-        comment_ele_list.extend(selector.xpath("//li[@class='lzl_single_post j_lzl_s_p ']"))
-        for comment_ele in comment_ele_list:
-            comment_value = self.extract_data_field_value(comment_ele)
-            if not comment_value:
-                continue
-            comment_user_a_selector = comment_ele.xpath("./a[@class='j_user_card lzl_p_p']")[0]
-            content = utils.extract_text_from_html(
-                comment_ele.xpath(".//span[@class='lzl_content_main']").get(default=""))
-            comment = TiebaComment(
-                comment_id=str(comment_value.get("spid")), content=content,
-                user_link=comment_user_a_selector.xpath("./@href").get(default=""),
-                user_nickname=comment_value.get("showname"),
-                user_avatar=comment_user_a_selector.xpath("./img/@src").get(default=""),
-                publish_time=comment_ele.xpath(".//span[@class='lzl_time']/text()").get(default="").strip(),
-                parent_comment_id=parent_comment.comment_id,
-                note_id=parent_comment.note_id, note_url=parent_comment.note_url,
-                tieba_id=parent_comment.tieba_id, tieba_name=parent_comment.tieba_name,
-                tieba_link=parent_comment.tieba_link)
-            comments.append(comment)
-
-        return comments
 
     def extract_creator_info(self, html_content: str) -> TiebaCreator:
         """

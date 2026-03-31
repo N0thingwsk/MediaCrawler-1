@@ -1,22 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/douyin/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
 import asyncio
 import copy
 import json
@@ -218,37 +199,17 @@ class DouYinClient(AbstractApiClient, ProxyRefreshMixin):
         headers["Referer"] = urllib.parse.quote(referer_url, safe=':/')
         return await self.get(uri, params)
 
-    async def get_sub_comments(self, aweme_id: str, comment_id: str, cursor: int = 0):
-        """
-            获取子评论
-        """
-        uri = "/aweme/v1/web/comment/list/reply/"
-        params = {
-            'comment_id': comment_id,
-            "cursor": cursor,
-            "count": 20,
-            "item_type": 0,
-            "item_id": aweme_id,
-        }
-        keywords = request_keyword_var.get()
-        referer_url = "https://www.douyin.com/search/" + keywords + '?aid=3a3cec5a-9e27-4040-b6aa-ef548c2c1138&publish_time=0&sort_type=0&source=search_history&type=general'
-        headers = copy.copy(self.headers)
-        headers["Referer"] = urllib.parse.quote(referer_url, safe=':/')
-        return await self.get(uri, params)
-
     async def get_aweme_all_comments(
         self,
         aweme_id: str,
         crawl_interval: float = 1.0,
-        is_fetch_sub_comments=False,
         callback: Optional[Callable] = None,
         max_count: int = 10,
     ):
         """
-        获取帖子的所有评论，包括子评论
+        获取帖子的所有评论
         :param aweme_id: 帖子ID
         :param crawl_interval: 抓取间隔
-        :param is_fetch_sub_comments: 是否抓取子评论
         :param callback: 回调函数，用于处理抓取到的评论
         :param max_count: 一次帖子爬取的最大评论数量
         :return: 评论列表
@@ -270,29 +231,6 @@ class DouYinClient(AbstractApiClient, ProxyRefreshMixin):
                 await callback(aweme_id, comments)
 
             await asyncio.sleep(crawl_interval)
-            if not is_fetch_sub_comments:
-                continue
-            # Get secondary reviews
-            for comment in comments:
-                reply_comment_total = comment.get("reply_comment_total")
-
-                if reply_comment_total > 0:
-                    comment_id = comment.get("cid")
-                    sub_comments_has_more = 1
-                    sub_comments_cursor = 0
-
-                    while sub_comments_has_more:
-                        sub_comments_res = await self.get_sub_comments(aweme_id, comment_id, sub_comments_cursor)
-                        sub_comments_has_more = sub_comments_res.get("has_more", 0)
-                        sub_comments_cursor = sub_comments_res.get("cursor", 0)
-                        sub_comments = sub_comments_res.get("comments", [])
-
-                        if not sub_comments:
-                            continue
-                        result.extend(sub_comments)
-                        if callback:  # If there is a callback function, execute the callback function
-                            await callback(aweme_id, sub_comments)
-                        await asyncio.sleep(crawl_interval)
         return result
 
     async def get_user_info(self, sec_user_id: str):

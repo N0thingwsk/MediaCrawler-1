@@ -1,24 +1,4 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/weibo/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-# -*- coding: utf-8 -*-
-# @Author  : relakkes@gmail.com
 # @Time    : 2023/12/23 15:40
 # @Desc    : Weibo crawler API request client
 
@@ -222,37 +202,7 @@ class WeiboClient(ProxyRefreshMixin):
                 await callback(note_id, comment_list)
             await asyncio.sleep(crawl_interval)
             result.extend(comment_list)
-            sub_comment_result = await self.get_comments_all_sub_comments(note_id, comment_list, callback)
-            result.extend(sub_comment_result)
         return result
-
-    @staticmethod
-    async def get_comments_all_sub_comments(
-        note_id: str,
-        comment_list: List[Dict],
-        callback: Optional[Callable] = None,
-    ) -> List[Dict]:
-        """
-        Get all sub-comments of comments
-        Args:
-            note_id:
-            comment_list:
-            callback:
-
-        Returns:
-
-        """
-        if not config.ENABLE_GET_SUB_COMMENTS:
-            utils.logger.info(f"[WeiboClient.get_comments_all_sub_comments] Crawling sub_comment mode is not enabled")
-            return []
-
-        res_sub_comments = []
-        for comment in comment_list:
-            sub_comments = comment.get("comments")
-            if sub_comments and isinstance(sub_comments, list):
-                await callback(note_id, sub_comments)
-                res_sub_comments.extend(sub_comments)
-        return res_sub_comments
 
     async def get_note_info_by_id(self, note_id: str) -> Dict:
         """

@@ -1,22 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/xhs/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
 import asyncio
 import json
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
@@ -353,38 +334,6 @@ class XiaoHongShuClient(AbstractApiClient, ProxyRefreshMixin):
         }
         return await self.get(uri, params)
 
-    async def get_note_sub_comments(
-        self,
-        note_id: str,
-        root_comment_id: str,
-        xsec_token: str,
-        num: int = 10,
-        cursor: str = "",
-    ):
-        """
-        Get sub-comments under specified parent comment API
-        Args:
-            note_id: Post ID of sub-comments
-            root_comment_id: Root comment ID
-            xsec_token: Verification token
-            num: Pagination quantity
-            cursor: Pagination cursor
-
-        Returns:
-
-        """
-        uri = "/api/sns/web/v2/comment/sub/page"
-        params = {
-            "note_id": note_id,
-            "root_comment_id": root_comment_id,
-            "num": str(num),
-            "cursor": cursor,
-            "image_formats": "jpg,webp,avif",
-            "top_comment_id": "",
-            "xsec_token": xsec_token,
-        }
-        return await self.get(uri, params)
-
     async def get_note_all_comments(
         self,
         note_id: str,
@@ -425,96 +374,6 @@ class XiaoHongShuClient(AbstractApiClient, ProxyRefreshMixin):
                 await callback(note_id, comments)
             await asyncio.sleep(crawl_interval)
             result.extend(comments)
-            sub_comments = await self.get_comments_all_sub_comments(
-                comments=comments,
-                xsec_token=xsec_token,
-                crawl_interval=crawl_interval,
-                callback=callback,
-            )
-            result.extend(sub_comments)
-        return result
-
-    async def get_comments_all_sub_comments(
-        self,
-        comments: List[Dict],
-        xsec_token: str,
-        crawl_interval: float = 1.0,
-        callback: Optional[Callable] = None,
-    ) -> List[Dict]:
-        """
-        Get all second-level comments under specified first-level comments, this method will continuously find all second-level comment information under first-level comments
-        Args:
-            comments: Comment list
-            xsec_token: Verification token
-            crawl_interval: Crawl delay per comment (seconds)
-            callback: Callback after one comment crawl ends
-
-        Returns:
-
-        """
-        if not config.ENABLE_GET_SUB_COMMENTS:
-            utils.logger.info(
-                f"[XiaoHongShuCrawler.get_comments_all_sub_comments] Crawling sub_comment mode is not enabled"
-            )
-            return []
-
-        result = []
-        for comment in comments:
-            try:
-                note_id = comment.get("note_id")
-                sub_comments = comment.get("sub_comments")
-                if sub_comments and callback:
-                    await callback(note_id, sub_comments)
-
-                sub_comment_has_more = comment.get("sub_comment_has_more")
-                if not sub_comment_has_more:
-                    continue
-
-                root_comment_id = comment.get("id")
-                sub_comment_cursor = comment.get("sub_comment_cursor")
-
-                while sub_comment_has_more:
-                    try:
-                        comments_res = await self.get_note_sub_comments(
-                            note_id=note_id,
-                            root_comment_id=root_comment_id,
-                            xsec_token=xsec_token,
-                            num=10,
-                            cursor=sub_comment_cursor,
-                        )
-
-                        if comments_res is None:
-                            utils.logger.info(
-                                f"[XiaoHongShuClient.get_comments_all_sub_comments] No response found for note_id: {note_id}"
-                            )
-                            break
-                        sub_comment_has_more = comments_res.get("has_more", False)
-                        sub_comment_cursor = comments_res.get("cursor", "")
-                        if "comments" not in comments_res:
-                            utils.logger.info(
-                                f"[XiaoHongShuClient.get_comments_all_sub_comments] No 'comments' key found in response: {comments_res}"
-                            )
-                            break
-                        comments = comments_res["comments"]
-                        if callback:
-                            await callback(note_id, comments)
-                        await asyncio.sleep(crawl_interval)
-                        result.extend(comments)
-                    except DataFetchError as e:
-                        utils.logger.warning(
-                            f"[XiaoHongShuClient.get_comments_all_sub_comments] Failed to get sub-comments for note_id: {note_id}, root_comment_id: {root_comment_id}, error: {e}. Skipping this comment's sub-comments."
-                        )
-                        break  # Break out of the sub-comment acquisition loop of the current comment and continue processing the next comment
-                    except Exception as e:
-                        utils.logger.error(
-                            f"[XiaoHongShuClient.get_comments_all_sub_comments] Unexpected error when getting sub-comments for note_id: {note_id}, root_comment_id: {root_comment_id}, error: {e}"
-                        )
-                        break
-            except Exception as e:
-                utils.logger.error(
-                    f"[XiaoHongShuClient.get_comments_all_sub_comments] Error processing comment: {comment.get('id', 'unknown')}, error: {e}. Continuing with next comment."
-                )
-                continue  # Continue to next comment
         return result
 
     async def get_creator_info(

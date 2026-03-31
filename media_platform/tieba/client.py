@@ -1,22 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/tieba/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
 import asyncio
 import json
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -392,11 +373,6 @@ class BaiduTieBaClient(AbstractApiClient):
 
                 result.extend(comments)
 
-                # Get all sub-comments
-                await self.get_comments_all_sub_comments(
-                    comments, crawl_interval=crawl_interval, callback=callback
-                )
-
                 await asyncio.sleep(crawl_interval)
                 current_page += 1
 
@@ -406,88 +382,6 @@ class BaiduTieBaClient(AbstractApiClient):
 
         utils.logger.info(f"[BaiduTieBaClient.get_note_all_comments] Total retrieved {len(result)} first-level comments")
         return result
-
-    async def get_comments_all_sub_comments(
-        self,
-        comments: List[TiebaComment],
-        crawl_interval: float = 1.0,
-        callback: Optional[Callable] = None,
-    ) -> List[TiebaComment]:
-        """
-        Get all sub-comments for specified comments (uses Playwright to access page, avoiding API detection)
-        Args:
-            comments: Comment list
-            crawl_interval: Crawl delay interval in seconds
-            callback: Callback function after one post crawl completes
-
-        Returns:
-            List[TiebaComment]: Sub-comment list
-        """
-        if not config.ENABLE_GET_SUB_COMMENTS:
-            return []
-
-        if not self.playwright_page:
-            utils.logger.error("[BaiduTieBaClient.get_comments_all_sub_comments] playwright_page is None, cannot use browser mode")
-            raise Exception("playwright_page is required for browser-based sub-comment fetching")
-
-        all_sub_comments: List[TiebaComment] = []
-
-        for parment_comment in comments:
-            if parment_comment.sub_comment_count == 0:
-                continue
-
-            current_page = 1
-            max_sub_page_num = parment_comment.sub_comment_count // 10 + 1
-
-            while max_sub_page_num >= current_page:
-                # Construct sub-comment URL
-                sub_comment_url = (
-                    f"{self._host}/p/comment?"
-                    f"tid={parment_comment.note_id}&"
-                    f"pid={parment_comment.comment_id}&"
-                    f"fid={parment_comment.tieba_id}&"
-                    f"pn={current_page}"
-                )
-                utils.logger.info(f"[BaiduTieBaClient.get_comments_all_sub_comments] Accessing sub-comment page: {sub_comment_url}")
-
-                try:
-                    # Use Playwright to access sub-comment page
-                    await self.playwright_page.goto(sub_comment_url, wait_until="domcontentloaded")
-
-                    # Wait for page loading, using delay setting from config file
-                    await asyncio.sleep(config.CRAWLER_MAX_SLEEP_SEC)
-
-                    # Get page HTML content
-                    page_content = await self.playwright_page.content()
-
-                    # Extract sub-comments
-                    sub_comments = self._page_extractor.extract_tieba_note_sub_comments(
-                        page_content, parent_comment=parment_comment
-                    )
-
-                    if not sub_comments:
-                        utils.logger.info(
-                            f"[BaiduTieBaClient.get_comments_all_sub_comments] "
-                            f"Comment {parment_comment.comment_id} page {current_page} has no sub-comments, stopping crawl"
-                        )
-                        break
-
-                    if callback:
-                        await callback(parment_comment.note_id, sub_comments)
-
-                    all_sub_comments.extend(sub_comments)
-                    await asyncio.sleep(crawl_interval)
-                    current_page += 1
-
-                except Exception as e:
-                    utils.logger.error(
-                        f"[BaiduTieBaClient.get_comments_all_sub_comments] "
-                        f"Failed to get comment {parment_comment.comment_id} page {current_page} sub-comments: {e}"
-                    )
-                    break
-
-        utils.logger.info(f"[BaiduTieBaClient.get_comments_all_sub_comments] Total retrieved {len(all_sub_comments)} sub-comments")
-        return all_sub_comments
 
     async def get_notes_by_tieba_name(self, tieba_name: str, page_num: int) -> List[TiebaNote]:
         """

@@ -1,24 +1,4 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/store/douyin/__init__.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-# -*- coding: utf-8 -*-
-# @Author  : relakkes@gmail.com
 # @Time    : 2024/1/14 18:46
 # @Desc    :
 from typing import List
@@ -32,21 +12,14 @@ from .douyin_store_media import *
 
 class DouyinStoreFactory:
     STORES = {
-        "csv": DouyinCsvStoreImplement,
         "db": DouyinDbStoreImplement,
-        "postgres": DouyinDbStoreImplement,
-        "json": DouyinJsonStoreImplement,
-        "jsonl": DouyinJsonlStoreImplement,
-        "sqlite": DouyinSqliteStoreImplement,
-        "mongodb": DouyinMongoStoreImplement,
-        "excel": DouyinExcelStoreImplement,
     }
 
     @staticmethod
     def create_store() -> AbstractStore:
         store_class = DouyinStoreFactory.STORES.get(config.SAVE_DATA_OPTION)
         if not store_class:
-            raise ValueError("[DouyinStoreFactory.create_store] Invalid save option only supported csv or db or json or sqlite or mongodb or excel ...")
+            raise ValueError("[DouyinStoreFactory.create_store] Invalid save option, only 'db' (MySQL) is supported.")
         return store_class()
 
 
@@ -183,6 +156,7 @@ async def update_douyin_aweme(aweme_item: Dict):
         "music_download_url": _extract_music_download_url(aweme_item),
         "note_download_url": ",".join(_extract_note_image_list(aweme_item)),
         "source_keyword": source_keyword_var.get(),
+        "keyword_tag": source_keyword_var.get(),
     }
     utils.logger.info(f"[store.douyin.update_douyin_aweme] douyin aweme id:{aweme_id}, title:{save_content_item.get('title')}")
     await DouyinStoreFactory.create_store().store_content(content_item=save_content_item)
@@ -217,11 +191,12 @@ async def update_dy_aweme_comment(aweme_id: str, comment_item: Dict):
         "user_signature": user_info.get("signature"),
         "nickname": user_info.get("nickname"),
         "avatar": avatar_info.get("url_list", [""])[0],
-        "sub_comment_count": str(comment_item.get("reply_comment_total", 0)),
         "like_count": (comment_item.get("digg_count") if comment_item.get("digg_count") else 0),
         "last_modify_ts": utils.get_current_timestamp(),
         "parent_comment_id": parent_comment_id,
+        "sub_comment_count": str(comment_item.get("reply_comment_total", 0)),
         "pictures": ",".join(_extract_comment_image_list(comment_item)),
+        "keyword_tag": source_keyword_var.get(),
     }
     utils.logger.info(f"[store.douyin.update_dy_aweme_comment] douyin aweme comment: {comment_id}, content: {save_comment_item.get('content')}")
 
