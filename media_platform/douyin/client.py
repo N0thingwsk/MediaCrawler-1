@@ -39,8 +39,150 @@ class DouYinClient(AbstractApiClient, ProxyRefreshMixin):
         self._host = "https://www.douyin.com"
         self.playwright_page = playwright_page
         self.cookie_dict = cookie_dict
+        # 缓存从浏览器动态获取的设备参数，避免每次请求都执行 JS（实例变量，支持多实例）
+        self._cached_device_params: Optional[Dict] = None
+        # 缓存从浏览器获取的 Client Hints 头信息
+        self._cached_client_hints: Optional[Dict] = None
         # Initialize proxy pool (from ProxyRefreshMixin)
         self.init_proxy_pool(proxy_ip_pool)
+
+    async def _get_device_params_from_browser(self) -> Dict:
+        """
+        从浏览器动态获取真实的设备参数，替代硬编码值。
+        结果会被缓存，避免每次请求都执行 JS 调用。
+        """
+        if self._cached_device_params is not None:
+            return self._cached_device_params
+
+        try:
+            device_info = await self.playwright_page.evaluate("""
+                () => {
+                    const ua = navigator.userAgent;
+                    // 从 UA 中提取 Chrome 版本号
+                    const chromeMatch = ua.match(/Chrome\/(\d+\.\d+\.\d+\.\d+)/);
+                    const chromeVersion = chromeMatch ? chromeMatch[1] : '109.0.0.0';
+                    // 从 Chrome 版本提取引擎版本（主版本号.0）
+                    const engineVersion = chromeVersion.split('.')[0] + '.0';
+                    // 获取操作系统版本
+                    let osName = 'Mac OS';
+                    let osVersion = '10.15.7';
+                    let browserPlatform = navigator.platform || 'MacIntel';
+                    if (ua.includes('Windows')) {
+                        osName = 'Windows';
+                        const winMatch = ua.match(/Windows NT (\d+\.\d+)/);
+                        osVersion = winMatch ? winMatch[1] : '10.0';
+                    } else if (ua.includes('Mac OS X')) {
+                        osName = 'Mac OS';
+                        const macMatch = ua.match(/Mac OS X ([\d_]+)/);
+                        osVersion = macMatch ? macMatch[1].replace(/_/g, '.') : '10.15.7';
+                    } else if (ua.includes('Linux')) {
+                        osName = 'Linux';
+                        osVersion = '';
+                    }
+                    return {
+                        browser_language: navigator.language || 'zh-CN',
+                        browser_platform: browserPlatform,
+                        browser_name: 'Chrome',
+                        browser_version: chromeVersion,
+                        browser_online: navigator.onLine ? 'true' : 'true',
+                        engine_name: 'Blink',
+                        engine_version: engineVersion,
+                        os_name: osName,
+                        os_version: osVersion,
+                        cpu_core_num: String(navigator.hardwareConcurrency || 8),
+                        device_memory: String(navigator.deviceMemory || 8),
+                        screen_width: String(window.screen.width),
+                        screen_height: String(window.screen.height),
+                        effective_type: (navigator.connection && navigator.connection.effectiveType) || '4g',
+                        round_trip_time: String((navigator.connection && navigator.connection.rtt) || 50),
+                    };
+                }
+            """)
+            self._cached_device_params = device_info
+            utils.logger.info(f"[DouYinClient] 已从浏览器动态获取设备参数: "
+                             f"Chrome/{device_info.get('browser_version')} | "
+                             f"{device_info.get('os_name')} {device_info.get('os_version')} | "
+                             f"屏幕 {device_info.get('screen_width')}x{device_info.get('screen_height')} | "
+                             f"CPU {device_info.get('cpu_core_num')}核 | "
+                             f"内存 {device_info.get('device_memory')}GB")
+            return device_info
+        except Exception as e:
+            utils.logger.warning(f"[DouYinClient] 动态获取设备参数失败，使用安全默认值: {e}")
+            # 回退到合理的默认值，使用真实存在的 Chrome 版本号
+            self._cached_device_params = {
+                "browser_language": "zh-CN",
+                "browser_platform": "MacIntel",
+                "browser_name": "Chrome",
+                "browser_version": "120.0.6099.109",
+                "browser_online": "true",
+                "engine_name": "Blink",
+                "engine_version": "120.0",
+                "os_name": "Mac OS",
+                "os_version": "10.15.7",
+                "cpu_core_num": "8",
+                "device_memory": "8",
+                "screen_width": "1920",
+                "screen_height": "1080",
+                "effective_type": "4g",
+                "round_trip_time": "50",
+            }
+            return self._cached_device_params
+
+    async def _get_client_hints_from_browser(self) -> Dict:
+        """
+        从浏览器动态获取 Client Hints 头信息。
+        现代 Chrome 浏览器会自动发送这些头，缺少它们可能被服务端检测为非浏览器请求。
+        结果会被缓存，避免每次请求都执行 JS 调用。
+        """
+        if self._cached_client_hints is not None:
+            return self._cached_client_hints
+
+        try:
+            hints = await self.playwright_page.evaluate("""
+                () => {
+                    const ua = navigator.userAgent;
+                    const chromeMatch = ua.match(/Chrome\/(\d+)/);
+                    const majorVersion = chromeMatch ? chromeMatch[1] : '120';
+                    const fullMatch = ua.match(/Chrome\/(\d+\.\d+\.\d+\.\d+)/);
+                    const fullVersion = fullMatch ? fullMatch[1] : majorVersion + '.0.0.0';
+
+                    // 判断平台
+                    let platform = 'macOS';
+                    if (ua.includes('Windows')) platform = 'Windows';
+                    else if (ua.includes('Linux')) platform = 'Linux';
+
+                    // 判断是否移动端
+                    const mobile = /Mobile|Android/.test(ua) ? '?1' : '?0';
+
+                    return {
+                        'Sec-Ch-Ua': `"Not_A Brand";v="8", "Chromium";v="${majorVersion}", "Google Chrome";v="${majorVersion}"`,
+                        'Sec-Ch-Ua-Mobile': mobile,
+                        'Sec-Ch-Ua-Platform': `"${platform}"`,
+                        'Sec-Fetch-Dest': 'empty',
+                        'Sec-Fetch-Mode': 'cors',
+                        'Sec-Fetch-Site': 'same-origin',
+                    };
+                }
+            """)
+            self._cached_client_hints = hints
+            utils.logger.info(
+                f"[DouYinClient] 已从浏览器获取 Client Hints: "
+                f"{hints.get('Sec-Ch-Ua', '')[:50]}... | "
+                f"Platform: {hints.get('Sec-Ch-Ua-Platform', '')} | "
+                f"Mobile: {hints.get('Sec-Ch-Ua-Mobile', '')}"
+            )
+            return hints
+        except Exception as e:
+            utils.logger.warning(f"[DouYinClient] 获取 Client Hints 失败，使用默认值: {e}")
+            self._cached_client_hints = {
+                "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"macOS"',
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin",
+            }
+            return self._cached_client_hints
 
     async def __process_req_params(
         self,
@@ -54,6 +196,14 @@ class DouYinClient(AbstractApiClient, ProxyRefreshMixin):
             return
         headers = headers or self.headers
         local_storage: Dict = await self.playwright_page.evaluate("() => window.localStorage")  # type: ignore
+
+        # 从浏览器动态获取真实设备参数（首次调用后缓存）
+        device_params = await self._get_device_params_from_browser()
+
+        # 注入 Client Hints 头，模拟真实 Chrome 浏览器行为
+        client_hints = await self._get_client_hints_from_browser()
+        headers.update(client_hints)
+
         common_params = {
             "device_platform": "webapp",
             "aid": "6383",
@@ -63,25 +213,12 @@ class DouYinClient(AbstractApiClient, ProxyRefreshMixin):
             "update_version_code": "170400",
             "pc_client_type": "1",
             "cookie_enabled": "true",
-            "browser_language": "zh-CN",
-            "browser_platform": "MacIntel",
-            "browser_name": "Chrome",
-            "browser_version": "125.0.0.0",
-            "browser_online": "true",
-            "engine_name": "Blink",
-            "os_name": "Mac OS",
-            "os_version": "10.15.7",
-            "cpu_core_num": "8",
-            "device_memory": "8",
-            "engine_version": "109.0",
             "platform": "PC",
-            "screen_width": "2560",
-            "screen_height": "1440",
-            'effective_type': '4g',
-            "round_trip_time": "50",
             "webid": get_web_id(),
             "msToken": local_storage.get("xmst"),
         }
+        # 合并浏览器动态获取的设备参数
+        common_params.update(device_params)
         params.update(common_params)
         query_string = urllib.parse.urlencode(params)
 

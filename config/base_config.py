@@ -3,7 +3,7 @@
 
 # ==================== 基础配置 ====================
 # 平台列表：支持同时配置多个平台，依次爬取
-# 可选值：xhs | dy | ks | bili | wb | tieba | zhihu
+# 可选值：xhs | dy | ks | bili
 PLATFORM = ["dy"]
 
 # 爬取关键词列表
@@ -100,7 +100,7 @@ START_PAGE = 1
 CRAWLER_MAX_NOTES_COUNT = 100
 
 # ==================== 涓流服务配置 (Trickle Service) ====================
-# 每个关键词每日爬取的最大条数
+# 每个关键词每轮爬取的最大条数（一轮爬完后会休眠再开始下一轮）
 TRICKLE_MAX_NOTES_PER_KEYWORD = 100
 
 # 每页爬取后的休眠时间（秒），控制爬取速率，避免触发风控
@@ -110,19 +110,98 @@ TRICKLE_SLEEP_BETWEEN_PAGES = 20
 # 关键词之间的休眠时间（秒），实际会加上 0~30 秒的随机偏移
 TRICKLE_SLEEP_BETWEEN_KEYWORDS = 90
 
-# 每日执行的随机时间范围（24小时制）
-# 每天会在此范围内随机选一个时间执行，模拟人类行为，降低风控风险
+# 错误重试指数退避配置
+# 基础等待时间（秒），实际等待 = base * 2^(连续错误次数-1)，并加随机抖动
+TRICKLE_ERROR_RETRY_BASE = 30
+# 指数退避最大等待时间上限（秒），防止等待过久
+TRICKLE_ERROR_RETRY_MAX = 600
+# 连续错误最大容忍次数，超过后跳过当前关键词
+TRICKLE_MAX_CONSECUTIVE_ERRORS = 5
+
+# ==================== 持续爬取模式配置 ====================
+# 是否启用持续爬取模式（True=7x24持续运行，False=每日定时执行一次）
+ENABLE_CONTINUOUS_MODE = True
+
+# 每轮爬取完成后的休眠时间范围（分钟），在此范围内随机选择
+# 模拟用户"刷一会儿休息一下"的行为
+CONTINUOUS_REST_MIN_MINUTES = 30
+CONTINUOUS_REST_MAX_MINUTES = 60
+
+# 每日定时模式的时间范围（仅 ENABLE_CONTINUOUS_MODE=False 时生效）
 TRICKLE_DAILY_TIME_RANGE_START = "01:00"
 TRICKLE_DAILY_TIME_RANGE_END = "05:00"
 
-# 遇到错误后的重试等待时间（秒）
-TRICKLE_ERROR_RETRY_INTERVAL = 120
+# ==================== 模拟用户行为配置 ====================
+# 每条数据处理后的停顿时间范围（秒），模拟用户阅读/浏览内容
+# 真实用户看一条内容通常需要 3~8 秒
+USER_READ_DELAY_MIN = 3.0
+USER_READ_DELAY_MAX = 8.0
+
+# 每页数据处理后的翻页间隔范围（秒），模拟用户滑动翻页
+# 真实用户翻页通常需要 5~15 秒
+USER_PAGE_SCROLL_DELAY_MIN = 5.0
+USER_PAGE_SCROLL_DELAY_MAX = 15.0
+
+# 关键词切换间隔范围（秒），模拟用户换一个搜索词
+USER_KEYWORD_SWITCH_DELAY_MIN = 30.0
+USER_KEYWORD_SWITCH_DELAY_MAX = 90.0
+
+# 模拟用户随机行为概率（0~1）
+# 在翻页间隙中，有一定概率执行"随机浏览"动作（滚动页面、停留等）
+USER_RANDOM_ACTION_PROBABILITY = 0.3
+
+# 模拟用户"走神"概率：偶尔长时间停顿（30~120秒），模拟用户去做别的事
+USER_IDLE_PROBABILITY = 0.1
+USER_IDLE_DELAY_MIN = 30.0
+USER_IDLE_DELAY_MAX = 120.0
+
+# ==================== 作息时间模拟配置 ====================
+# 是否启用作息时间模拟（True=只在活跃时段爬取，休眠时段暂停爬取但保持Cookie保活）
+ENABLE_SCHEDULE_MODE = True
+
+# 活跃时段列表（24小时制），在这些时段内正常爬取
+# 格式：[(开始时间, 结束时间), ...]
+# 默认模拟真实用户作息：早上8点~12点、下午14点~18点、晚上20点~23点
+ACTIVE_HOURS = [
+    ("08:00", "12:00"),
+    ("14:00", "18:00"),
+    ("20:00", "23:00"),
+]
+
+# 休眠时段检查间隔（秒）：在休眠时段中，每隔多久检查一次是否进入活跃时段
+SLEEP_CHECK_INTERVAL = 300
+
+# ==================== Cookie 续约增强配置 ====================
+# Cookie 自动刷新间隔（秒），定期从浏览器同步最新 Cookie
+COOKIE_REFRESH_INTERVAL = 90
+
+# 页面活跃保持间隔（秒），定期在浏览器中执行轻量操作保持会话活跃
+# 防止长时间无操作导致 Cookie/Session 过期
+PAGE_KEEP_ALIVE_INTERVAL = 60
+
+# 页面完整刷新间隔（秒），定期刷新页面以续约 Cookie
+# 模拟用户偶尔刷新页面的行为
+PAGE_FULL_REFRESH_INTERVAL = 600
+
+# ==================== 休眠期降频保活配置 ====================
+# 休眠时段的保活间隔倍率（相对于活跃时段的倍数）
+# 例如：活跃时段微操作间隔60s，休眠时段 = 60 * 5 = 300s
+SLEEP_KEEP_ALIVE_MULTIPLIER = 5
+
+# 休眠时段的页面刷新间隔倍率
+# 例如：活跃时段刷新间隔600s，休眠时段 = 600 * 3 = 1800s（30分钟）
+SLEEP_PAGE_REFRESH_MULTIPLIER = 3
+
+# ==================== Stealth.js 自动更新配置 ====================
+# 是否启用 stealth.min.js 自动更新（启动时检查版本并自动更新）
+ENABLE_STEALTH_AUTO_UPDATE = True
+
+# stealth.min.js 最大允许年龄（天），超过此天数自动触发更新
+# 建议 30~90 天，太频繁可能下载失败，太久可能被新检测手段绕过
+STEALTH_MAX_AGE_DAYS = 30
 
 # ==================== 各平台子配置导入 ====================
 from .dy_config import *
 from .xhs_config import *
 from .bilibili_config import *
 from .ks_config import *
-from .weibo_config import *
-from .tieba_config import *
-from .zhihu_config import *

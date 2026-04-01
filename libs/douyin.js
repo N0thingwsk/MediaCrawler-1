@@ -1,5 +1,3 @@
-// All the content in this article is only for learning and communication use, not for any other purpose, strictly prohibited for commercial use and illegal use, otherwise all the consequences are irrelevant to the author!
-// copy from https://github.com/ShilongLee/Crawler/tree/main/lib/js thanks for ShilongLee
 function rc4_encrypt(plaintext, key) {
     var s = [];
     for (var i = 0; i < 256; i++) {

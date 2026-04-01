@@ -6,7 +6,7 @@
 每天在配置的时间范围内随机选一个时间执行，模拟人类行为，降低风控风险。
 每个关键词爬取指定数量的数据，并打上关键词 tag。
 
-支持平台：xhs | dy | ks | bili | wb | tieba | zhihu
+支持平台：xhs | dy | ks | bili
 平台通过 config/base_config.py 中的 PLATFORM 配置项指定。
 
 使用方式：
@@ -36,10 +36,7 @@ from base.base_crawler import AbstractCrawler
 from media_platform.bilibili import BilibiliCrawler
 from media_platform.douyin import DouYinCrawler
 from media_platform.kuaishou import KuaishouCrawler
-from media_platform.tieba import TieBaCrawler
-from media_platform.weibo import WeiboCrawler
 from media_platform.xhs import XiaoHongShuCrawler
-from media_platform.zhihu import ZhihuCrawler
 from tools import utils
 
 
@@ -50,9 +47,6 @@ class CrawlerFactory:
         "dy": DouYinCrawler,
         "ks": KuaishouCrawler,
         "bili": BilibiliCrawler,
-        "wb": WeiboCrawler,
-        "tieba": TieBaCrawler,
-        "zhihu": ZhihuCrawler,
     }
 
     @staticmethod
@@ -167,36 +161,72 @@ async def run_trickle_once() -> None:
 
 async def trickle_service_loop() -> None:
     """
-    涓流服务主循环：
-    1. 首次启动立即执行一次
-    2. 之后每天在随机时间执行，时间范围由配置决定
+    涓流服务主循环，支持两种运行模式：
+
+    1. 持续模式（ENABLE_CONTINUOUS_MODE=True）：
+       - 直接启动爬虫，爬虫内部自行循环爬取
+       - 每轮爬完后在爬虫内部休眠 30~60 分钟再继续
+       - 后台持续保活 Cookie，模拟真实用户行为
+
+    2. 定时模式（ENABLE_CONTINUOUS_MODE=False）：
+       - 首次启动立即执行一次
+       - 之后每天在配置的时间范围内随机选一个时间执行
     """
-    time_start = config.TRICKLE_DAILY_TIME_RANGE_START
-    time_end = config.TRICKLE_DAILY_TIME_RANGE_END
+    continuous_mode = getattr(config, "ENABLE_CONTINUOUS_MODE", False)
+
     utils.logger.info(
         f"[TrickleService] 涓流服务启动 | "
+        f"运行模式: {'持续爬取' if continuous_mode else '每日定时'} | "
         f"平台: {config.PLATFORM} (共 {len(config.PLATFORM)} 个) | "
-        f"每日随机执行时间范围: {time_start} ~ {time_end} | "
         f"关键词: {config.KEYWORDS} | "
         f"每关键词目标: {config.TRICKLE_MAX_NOTES_PER_KEYWORD} 条"
     )
 
-    # 首次启动直接执行一次
-    utils.logger.info("[TrickleService] 首次启动，立即执行一轮涓流爬取...")
-    await run_trickle_once()
+    if continuous_mode:
+        # 持续模式：直接启动爬虫，爬虫内部自行无限循环
+        schedule_mode = getattr(config, "ENABLE_SCHEDULE_MODE", False)
+        schedule_info = ""
+        if schedule_mode:
+            active_hours = getattr(config, "ACTIVE_HOURS", [])
+            hours_str = ", ".join([f"{s}~{e}" for s, e in active_hours])
+            schedule_info = (
+                f" | 作息模拟: 已启用 | 活跃时段: {hours_str} | "
+                f"休眠期保活降频: 微操作x{config.SLEEP_KEEP_ALIVE_MULTIPLIER}, 刷新x{config.SLEEP_PAGE_REFRESH_MULTIPLIER}"
+            )
+        else:
+            schedule_info = " | 作息模拟: 未启用（全天爬取）"
 
-    # 之后进入随机定时循环
-    while True:
-        next_run_dt = _generate_random_run_time(time_start, time_end)
-        wait_seconds = _seconds_until(next_run_dt)
-        wait_hours = wait_seconds / 3600
         utils.logger.info(
-            f"[TrickleService] 下次执行时间: {next_run_dt.strftime('%Y-%m-%d %H:%M:%S')} "
-            f"(随机生成，范围 {time_start}~{time_end}) | "
-            f"等待 {wait_hours:.1f} 小时"
+            f"[TrickleService] 持续模式启动 | "
+            f"轮次间休眠: {config.CONTINUOUS_REST_MIN_MINUTES}~{config.CONTINUOUS_REST_MAX_MINUTES} 分钟 | "
+            f"Cookie刷新间隔: {config.COOKIE_REFRESH_INTERVAL}s | "
+            f"页面保活间隔: {config.PAGE_KEEP_ALIVE_INTERVAL}s"
+            f"{schedule_info}"
         )
-        await asyncio.sleep(wait_seconds)
         await run_trickle_once()
+    else:
+        # 定时模式：首次启动立即执行，之后每天随机定时
+        time_start = config.TRICKLE_DAILY_TIME_RANGE_START
+        time_end = config.TRICKLE_DAILY_TIME_RANGE_END
+        utils.logger.info(
+            f"[TrickleService] 定时模式 | 每日随机执行时间范围: {time_start} ~ {time_end}"
+        )
+
+        utils.logger.info("[TrickleService] 首次启动，立即执行一轮涓流爬取...")
+        await run_trickle_once()
+
+        # 之后进入随机定时循环
+        while True:
+            next_run_dt = _generate_random_run_time(time_start, time_end)
+            wait_seconds = _seconds_until(next_run_dt)
+            wait_hours = wait_seconds / 3600
+            utils.logger.info(
+                f"[TrickleService] 下次执行时间: {next_run_dt.strftime('%Y-%m-%d %H:%M:%S')} "
+                f"(随机生成，范围 {time_start}~{time_end}) | "
+                f"等待 {wait_hours:.1f} 小时"
+            )
+            await asyncio.sleep(wait_seconds)
+            await run_trickle_once()
 
 
 async def main() -> None:
@@ -207,6 +237,12 @@ async def main() -> None:
         utils.logger.info("[Main] INIT_DB_ON_STARTUP=True，正在初始化数据库表结构...")
         await init_db("mysql")
         utils.logger.info("[Main] 数据库表结构初始化完成")
+
+    # 检查并自动更新 stealth.min.js（反检测脚本）
+    if getattr(config, "ENABLE_STEALTH_AUTO_UPDATE", False):
+        from tools.stealth_updater import check_and_update
+        max_age = getattr(config, "STEALTH_MAX_AGE_DAYS", 30)
+        check_and_update(max_age_days=max_age)
 
     await trickle_service_loop()
 
@@ -235,14 +271,41 @@ if __name__ == "__main__":
     platforms = config.PLATFORM
     supported_platforms = ", ".join(CrawlerFactory.CRAWLERS.keys())
 
+    continuous_mode = getattr(config, "ENABLE_CONTINUOUS_MODE", False)
+    mode_str = "持续爬取（7x24）" if continuous_mode else "每日定时"
+
     print("=" * 60)
     print(f"  涓流爬取服务 | 平台: {platforms} (共 {len(platforms)} 个)")
     print(f"  支持的平台: {supported_platforms}")
+    print(f"  运行模式: {mode_str}")
     print(f"  关键词: {config.KEYWORDS}")
-    print(f"  每关键词目标: {config.TRICKLE_MAX_NOTES_PER_KEYWORD} 条/天")
-    print(f"  每日随机执行时间: {config.TRICKLE_DAILY_TIME_RANGE_START} ~ {config.TRICKLE_DAILY_TIME_RANGE_END}")
-    print(f"  页间休眠: {config.TRICKLE_SLEEP_BETWEEN_PAGES}s")
-    print(f"  关键词间休眠: {config.TRICKLE_SLEEP_BETWEEN_KEYWORDS}s")
+    print(f"  每关键词目标: {config.TRICKLE_MAX_NOTES_PER_KEYWORD} 条/轮")
+    if continuous_mode:
+        print(f"  轮次间休眠: {config.CONTINUOUS_REST_MIN_MINUTES}~{config.CONTINUOUS_REST_MAX_MINUTES} 分钟")
+        print(f"  用户阅读延迟: {config.USER_READ_DELAY_MIN}~{config.USER_READ_DELAY_MAX}s")
+        print(f"  翻页延迟: {config.USER_PAGE_SCROLL_DELAY_MIN}~{config.USER_PAGE_SCROLL_DELAY_MAX}s")
+        print(f"  Cookie刷新间隔: {config.COOKIE_REFRESH_INTERVAL}s")
+        print(f"  页面保活间隔: {config.PAGE_KEEP_ALIVE_INTERVAL}s")
+        schedule_mode = getattr(config, "ENABLE_SCHEDULE_MODE", False)
+        if schedule_mode:
+            active_hours = getattr(config, "ACTIVE_HOURS", [])
+            hours_str = ", ".join([f"{s}~{e}" for s, e in active_hours])
+            print(f"  作息模拟: 已启用")
+            print(f"  活跃时段: {hours_str}")
+            print(f"  休眠期保活降频: 微操作 x{config.SLEEP_KEEP_ALIVE_MULTIPLIER}, 刷新 x{config.SLEEP_PAGE_REFRESH_MULTIPLIER}")
+        else:
+            print(f"  作息模拟: 未启用（7x24全天爬取）")
+    else:
+        print(f"  每日随机执行时间: {config.TRICKLE_DAILY_TIME_RANGE_START} ~ {config.TRICKLE_DAILY_TIME_RANGE_END}")
+
+    # 显示 stealth.min.js 自动更新状态
+    stealth_auto_update = getattr(config, "ENABLE_STEALTH_AUTO_UPDATE", False)
+    if stealth_auto_update:
+        stealth_max_age = getattr(config, "STEALTH_MAX_AGE_DAYS", 30)
+        print(f"  Stealth.js 自动更新: 已启用 (超过 {stealth_max_age} 天自动更新)")
+    else:
+        print(f"  Stealth.js 自动更新: 未启用")
+
     print("=" * 60)
 
     run(main, async_cleanup, cleanup_timeout_seconds=15.0, on_first_interrupt=_force_stop)
